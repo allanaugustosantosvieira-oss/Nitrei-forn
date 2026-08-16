@@ -120,6 +120,17 @@ export const commands = [
 ].map((cmd) => cmd.toJSON());
 
 export async function registerCommands({ token, clientId, guildId }) {
+  if (!token) {
+    console.error(
+      'Não dá para registrar comandos: o TOKEN está vazio. ' +
+        'Defina TOKEN no painel do Render (Environment) — o .env local não é enviado para o Render.',
+    );
+    throw new Error('TOKEN vazio — configure a variável TOKEN no Render');
+  }
+  if (!clientId) {
+    console.error('Não dá para registrar comandos: o CLIENT_ID está vazio.');
+    throw new Error('CLIENT_ID vazio — configure a variável CLIENT_ID no Render');
+  }
   const rest = new REST({ version: '10' }).setToken(token);
 
   // Discord soma comandos globais + do servidor. Se os dois existirem, aparece tudo duplicado.
@@ -137,6 +148,7 @@ export async function registerCommands({ token, clientId, guildId }) {
       console.warn(
         `Falha ao registrar comandos no guild ${guildId} (${code || err.message}). ` +
           'O bot precisa estar no servidor com o escopo applications.commands. ' +
+          'Se for 401, o TOKEN pode estar errado/revogado — gere um novo e atualize no Render. ' +
           'Registrando comandos globais como fallback...',
       );
       // Se o guild falhou, limpa o que tiver no guild (quando possível) e usa global

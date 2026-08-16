@@ -66,9 +66,31 @@ export const APPROVAL_ROLE_ID = process.env.APPROVAL_ROLE_ID || envArquivo.APPRO
 export const API_KEY = process.env.BOT_API_KEY || envArquivo.BOT_API_KEY || config.apiKey || '';
 export const API_PORT = Number(process.env.PORT || envArquivo.PORT || config.apiPort || 10000);
 
+export function diagnosticarAmbiente() {
+  const origemDe = (variaveisEnv, chavesConfig) => {
+    for (const k of variaveisEnv) if (process.env[k]) return `env ${k}`;
+    for (const k of variaveisEnv) if (envArquivo[k]) return `.env ${k}`;
+    for (const k of chavesConfig) if (config[k]) return `config.json ${k}`;
+    return 'NÃO DEFINIDO';
+  };
+  return {
+    TOKEN: origemDe(['TOKEN', 'DISCORD_TOKEN'], ['token', 'DISCORD_TOKEN']),
+    CLIENT_ID: origemDe(['CLIENT_ID', 'DISCORD_CLIENT_ID'], ['clientId', 'DISCORD_CLIENT_ID']),
+    GUILD_ID: origemDe(['GUILD_ID', 'DISCORD_GUILD_ID'], ['guildId', 'DISCORD_GUILD_ID']),
+    API_KEY: origemDe(['BOT_API_KEY'], ['apiKey']),
+    API_PORT: origemDe(['PORT'], ['apiPort']),
+  };
+}
+
 export function validarAmbiente() {
-  if (!TOKEN || !CLIENT_ID) {
-    console.error('Preencha "token" e "clientId" no config.json ou nas variáveis de ambiente (.env / painel do Render).');
-    process.exit(1);
-  }
+  const faltantes = [];
+  if (!TOKEN) faltantes.push('TOKEN');
+  if (!CLIENT_ID) faltantes.push('CLIENT_ID');
+  if (!faltantes.length) return;
+  console.error(
+    `Configuração incompleta: falta ${faltantes.join(' e ')}. ` +
+      'Defina as variáveis no painel do Render (Environment) — o .env local NÃO é enviado para o Render. ' +
+      'Ou preencha config.json.',
+  );
+  process.exit(1);
 }

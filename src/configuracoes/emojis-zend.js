@@ -1,12 +1,15 @@
 import path from 'node:path';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { carregarEnv } from './env-loader.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = path.resolve(__dirname, '../../config.json');
 
 function pastaEmojiDoConfig() {
   try {
+    const env = carregarEnv();
+    if (typeof env.EMOJI_FOLDER === 'string' && env.EMOJI_FOLDER.trim()) return env.EMOJI_FOLDER.trim();
     if (!existsSync(CONFIG_PATH)) return null;
     const config = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
     return typeof config.emojiFolder === 'string' && config.emojiFolder.trim() ? config.emojiFolder.trim() : null;

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { POSITION_LIMIT, applySyncedEmojiOverrides } from '../discord/emojis.js';
 import { criarEstadoPadraoAutomacoes, normalizarEstadoAutomacoes } from '../automacoes/estado-automacoes.js';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
 
 export async function loadState() {

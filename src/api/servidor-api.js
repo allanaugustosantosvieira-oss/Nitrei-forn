@@ -37,6 +37,7 @@ export function iniciarServidorApi(client, opts) {
     saveState,
     apiKey,
     port,
+    state,
   } = opts;
 
   if (!apiKey) {
@@ -140,6 +141,22 @@ export function iniciarServidorApi(client, opts) {
           cart: cart.publicId,
           paymentId: paymentId || null,
           message: result.message,
+        });
+      }
+
+      if (route === '/api/config/restore' && req.method === 'POST') {
+        const body = await lerCorpo(req);
+        if (!body || typeof body.guilds !== 'object' || typeof body.drafts !== 'object') {
+          return send(400, { ok: false, error: 'Envie o estado completo com os campos guilds e drafts.' });
+        }
+        state.guilds = body.guilds;
+        state.drafts = body.drafts;
+        await saveState();
+        const totalGuilds = Object.keys(state.guilds).length;
+        return send(200, {
+          ok: true,
+          guilds: totalGuilds,
+          message: `Configuração restaurada (${totalGuilds} servidor(es)).`,
         });
       }
 

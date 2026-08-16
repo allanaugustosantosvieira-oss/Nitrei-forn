@@ -31,6 +31,7 @@ export function criarHandlerModais(ctx) {
     findCartCoupon,
     finishGiveaway,
     gatewayPaymentPanel,
+    stormPaymentPanel,
     getCart,
     getField,
     getProduct,
@@ -376,6 +377,10 @@ export function criarHandlerModais(ctx) {
       gs.payments.manual.message = get('message');
       gs.payments.manual.configured = true;
       return sendOrUpdate(interaction, manualPaymentPanel(guild, gs));
+    case 'modal-storm':
+      gs.payments.storm.apiKey = get('apiKey');
+      gs.payments.storm.configured = Boolean(gs.payments.storm.apiKey);
+      return sendOrUpdate(interaction, stormPaymentPanel(guild, gs));
     case 'modal-gateway': {
       const item = gs.payments[a];
       if (a === 'efi') {

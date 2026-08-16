@@ -195,6 +195,7 @@ const {
   paymentsPanel,
   manualPaymentPanel,
   gatewayPaymentPanel,
+  stormPaymentPanel,
   antiFakePanel,
   cloudPanel,
   oauthPanel,
@@ -349,6 +350,7 @@ const handleModal = criarHandlerModais({
   findCartCoupon,
   finishGiveaway,
   gatewayPaymentPanel,
+  stormPaymentPanel,
   getCart,
   getField,
   getProduct,
@@ -511,6 +513,7 @@ const handleButton = criarHandlerBotoes({
   findCartCoupon,
   finishGiveaway,
   gatewayPaymentPanel,
+  stormPaymentPanel,
   getCart,
   getField,
   getProduct,
@@ -662,6 +665,7 @@ export async function iniciarBot() {
     saveState,
     apiKey: API_KEY,
     port: API_PORT,
+    state,
   });
   await registerCommands({ token: TOKEN, clientId: CLIENT_ID, guildId: GUILD_ID });
   await client.login(TOKEN);

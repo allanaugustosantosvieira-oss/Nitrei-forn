@@ -11,7 +11,7 @@ async function repararAcessoCarrinhos(client, guilds) {
     const approvers = members ? [...members.filter((m) => m.roles.cache.has(APPROVAL_ROLE_ID)).values()] : [];
     if (approvers.length === 0) continue;
     for (const cart of gs.carts || []) {
-      if (!['AWAITING_APPROVAL', 'AWAITING_MANUAL_PAYMENT'].includes(cart.status) || !cart.channelId) continue;
+      if (!['AWAITING_APPROVAL', 'AWAITING_MANUAL_PAYMENT', 'AWAITING_STORM_PAYMENT'].includes(cart.status) || !cart.channelId) continue;
       const channel = await guild.channels.fetch(cart.channelId).catch(() => null);
       if (!channel) continue;
       if (channel.isThread()) {
@@ -36,7 +36,11 @@ export function registrarEventoBotPronto(
     state,
     applySyncedEmojiOverrides,
     iniciarAgendadorAutomacoes,
+    iniciarMonitorStormWallet,
     repostarProdutos,
+    deliverCart,
+    cancelCart,
+    statusCobrancaStorm,
     saveState,
     scheduleGiveaway,
     syncEmojisOnStart,
@@ -87,6 +91,7 @@ export function registrarEventoBotPronto(
     await repararAcessoCarrinhos(client, state.guilds);
 
     iniciarAgendadorAutomacoes(client, { state, saveState, repostarProdutos });
+    iniciarMonitorStormWallet(client, { state, saveState, deliverCart, cancelCart, statusCobrancaStorm });
 
     if (!syncEmojisOnStart) return;
 

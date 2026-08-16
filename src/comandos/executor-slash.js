@@ -550,14 +550,15 @@ async function handleSlashCommand(interaction, gs) {
     }
     const query = options.getString('id');
     const cart = getCart(gs, query || interaction.channelId)
-      || (query ? null : [...gs.carts].reverse().find((item) => ['AWAITING_APPROVAL', 'AWAITING_MANUAL_PAYMENT'].includes(item.status)));
+      || (query ? null : [...gs.carts].reverse().find((item) => ['AWAITING_APPROVAL', 'AWAITING_MANUAL_PAYMENT', 'AWAITING_STORM_PAYMENT'].includes(item.status)));
     if (!cart) {
-      const pendentes = gs.carts.filter((item) => ['AWAITING_APPROVAL', 'AWAITING_MANUAL_PAYMENT'].includes(item.status));
+      const pendentes = gs.carts.filter((item) => ['AWAITING_APPROVAL', 'AWAITING_MANUAL_PAYMENT', 'AWAITING_STORM_PAYMENT'].includes(item.status));
       if (pendentes.length === 0) return interaction.reply({ content: 'Nenhum carrinho pendente foi encontrado.', ephemeral: true });
       const lines = pendentes.map((item) => {
         const product = gs.products.find((p) => p.id === item.productId);
         const link = item.channelId ? `https://discord.com/channels/${interaction.guild.id}/${item.channelId}` : null;
-        return `\`${item.publicId}\` • **${product?.name || 'Produto'}** • ${money(item.subtotal)} • <@${item.userId}>${link ? ` • ${link}` : ''} — \`${item.status === 'AWAITING_MANUAL_PAYMENT' ? 'PIX enviado' : 'Aguardando pagamento'}\``;
+        const label = item.status === 'AWAITING_MANUAL_PAYMENT' ? 'PIX enviado' : item.status === 'AWAITING_STORM_PAYMENT' ? 'PIX (automático)' : 'Aguardando pagamento';
+        return `\`${item.publicId}\` • **${product?.name || 'Produto'}** • ${money(item.subtotal)} • <@${item.userId}>${link ? ` • ${link}` : ''} — \`${label}\``;
       });
       return interaction.reply({
         embeds: [embed(`Carrinhos pendentes (${pendentes.length})`, lines)],

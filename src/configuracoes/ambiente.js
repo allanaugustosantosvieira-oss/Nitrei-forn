@@ -63,6 +63,8 @@ export const SYNC_EMOJIS_ON_START =
 export const MANAGE_GUILD_EXPRESSIONS =
   PermissionFlagsBits.ManageGuildExpressions ?? PermissionFlagsBits.ManageEmojisAndStickers;
 export const APPROVAL_ROLE_ID = process.env.APPROVAL_ROLE_ID || envArquivo.APPROVAL_ROLE_ID || config.approvalRoleId || '';
+export const API_KEY = process.env.BOT_API_KEY || envArquivo.BOT_API_KEY || config.apiKey || '';
+export const API_PORT = Number(process.env.PORT || envArquivo.PORT || config.apiPort || 10000);
 
 export function validarAmbiente() {
   if (!TOKEN || !CLIENT_ID) {

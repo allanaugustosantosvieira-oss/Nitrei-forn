@@ -64,6 +64,7 @@ export function defaultGuildState() {
       },
       efi: { enabled: false, configured: false, clientId: '', clientSecret: '', pixKey: '', certificate: '' },
       mercadoPago: { enabled: false, configured: false, accessToken: '', publicKey: '' },
+      storm: { enabled: false, configured: false, apiKey: '' },
       zenWallet: { enabled: false, configured: true },
       nubank: { enabled: false, configured: false },
       pushinpay: { enabled: false, configured: false },

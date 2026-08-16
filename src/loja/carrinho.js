@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
 import { APPROVAL_ROLE_ID } from '../configuracoes/ambiente.js';
+import { criarCobrancaStorm, stormConfigurado, stormQrBuffer } from '../pagamentos/storm-wallet.js';
 
 export function criarSistemaCarrinho(ctx) {
   const {
@@ -96,6 +97,7 @@ function cartStatusLabel(status) {
     OPEN: 'Montando carrinho',
     PAYMENT_SELECTION: 'Escolhendo pagamento',
     AWAITING_MANUAL_PAYMENT: 'Aguardando comprovante',
+    AWAITING_STORM_PAYMENT: 'Aguardando pagamento via StorM',
     AWAITING_APPROVAL: 'Aguardando aprovação',
     PROCESSING: 'Processando entrega',
     DELIVERED: 'Entregue',
@@ -340,6 +342,33 @@ function manualPaymentPayload(guild, gs, cart, qrBuffer) {
   return payload;
 }
 
+function stormPaymentPayload(guild, gs, cart, pixCode, qrBuffer) {
+  const total = money(cartAmounts(gs, cart).total);
+  const payload = {
+    content: `${EMOJI.pixZend} Pague o **QR Code** abaixo ou use o **copia-e-cola**. A entrega é feita automaticamente assim que o pagamento for confirmado!`,
+    components: [
+      new ActionRowBuilder().addComponents(
+        button(id('cart-cancel', cart.id), 'Cancelar', ButtonStyle.Danger, EMOJI.deleteZend),
+      ),
+    ],
+  };
+  if (qrBuffer) {
+    payload.embeds = [
+      new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setTitle('Pagamento PIX • StorM Wallet')
+        .setDescription(`**Valor:** \`${total}\`\n\n\`\`\`${pixCode}\`\`\`\n**Status:** \`Aguardando pagamento\` — verificação automática em andamento.`)
+        .setImage('attachment://pix-qr.png')
+        .setFooter(nowFooter(guild, 'Pagamento StorM Wallet'))
+        .setTimestamp(),
+    ];
+    payload.files = [new AttachmentBuilder(qrBuffer, { name: 'pix-qr.png' })];
+  } else {
+    payload.content = `${EMOJI.pixZend} **PIX copia-e-cola:**\n\n\`\`\`${pixCode}\`\`\``;
+  }
+  return payload;
+}
+
 function isCartOwner(interaction, cart) {
   return interaction.user.id === cart.userId;
 }
@@ -574,6 +603,52 @@ async function cancelCart(guild, gs, cart, status = 'CANCELLED', reason = 'Cance
   return true;
 }
 
+async function iniciarPagamentoStorm(interaction, gs, cart, cpf, payerName) {
+  if (cart.status === 'AWAITING_STORM_PAYMENT' && cart.stormPaymentId) {
+    return { ok: false, message: `${EMOJI.no} Este carrinho já possui uma cobrança PIX em andamento.` };
+  }
+  const cpfDigits = String(cpf || '').replace(/\D/g, '');
+  if (cpfDigits.length !== 11) {
+    return { ok: false, message: `${EMOJI.no} CPF inválido. Digite os 11 números do seu CPF.` };
+  }
+  const amount = Number(cartAmounts(gs, cart).total || 0);
+  try {
+    const cobranca = await criarCobrancaStorm({
+      gs,
+      amount,
+      payerName: String(payerName || cart.userTag || 'Comprador').slice(0, 100),
+      payerDocument: cpfDigits,
+      description: `Carrinho ${cart.publicId} • ${cart.userTag || 'compra'}`.slice(0, 200),
+      externalId: cart.publicId,
+      metadata: { guildId: interaction.guild.id, cartId: cart.id },
+    });
+    cart.paymentMethod = 'StorM Wallet';
+    cart.stormPaymentId = cobranca.id;
+    cart.stormPixCode = cobranca.pixCode || null;
+    cart.status = 'AWAITING_STORM_PAYMENT';
+    cart.updatedAt = Date.now();
+    await sendOrderRequestedLog(interaction.guild, gs, cart);
+
+    const channel = cart.channelId
+      ? await interaction.guild.channels.fetch(cart.channelId).catch(() => null)
+      : interaction.channel;
+    if (cart.messageId && channel?.isTextBased()) {
+      await channel.messages.delete(cart.messageId).catch(() => null);
+    }
+    const qrBuffer = stormQrBuffer(cobranca.qrCode);
+    const sent = channel?.isTextBased()
+      ? await channel.send(stormPaymentPayload(interaction.guild, gs, cart, cobranca.pixCode, qrBuffer)).catch(() => null)
+      : null;
+    if (sent) cart.messageId = sent.id;
+    return { ok: true, message: `${EMOJI.yesgenesis} Cobrança PIX gerada! O pagamento será verificado automaticamente.` };
+  } catch (error) {
+    cart.status = 'PAYMENT_SELECTION';
+    cart.paymentMethod = null;
+    cart.updatedAt = Date.now();
+    return { ok: false, message: `${EMOJI.no} Falha ao gerar o PIX: ${error.message}` };
+  }
+}
+
 async function startCart(interaction, gs, product) {
   if (!gs.channels.orderLogs) {
     return interaction.reply({ content: `${EMOJI.no} Ops... o canal de logs pedidos ainda não foi configurado, faça um retorno em breve!`, ephemeral: true });
@@ -710,6 +785,14 @@ async function handleCartButton(interaction, gs, action, cartId) {
   }
   if (action === 'cart-pay-manual') {
     if (!hasConfiguredPayment(gs)) return interaction.reply({ content: 'O pagamento manual não está disponível.', ephemeral: true });
+    if (stormConfigurado(gs)) {
+      cart.paymentMethod = 'StorM Wallet';
+      cart.updatedAt = Date.now();
+      return interaction.showModal(modal(id('modal-cart-storm-cpf', cart.id), 'Pagar com PIX • StorM Wallet', [
+        textInput('cpf', 'CPF DO PAGADOR*', 'Digite o CPF do pagador (somente números)', TextInputStyle.Short, true),
+        textInput('name', 'NOME DO PAGADOR', 'Nome do titular (opcional)', TextInputStyle.Short, false),
+      ]));
+    }
     cart.paymentMethod = 'Pagamento Manual';
     cart.status = 'AWAITING_MANUAL_PAYMENT';
     cart.updatedAt = Date.now();
@@ -787,6 +870,7 @@ async function handleCartButton(interaction, gs, action, cartId) {
     cartPayload,
     paymentPayload,
     manualPaymentPayload,
+    stormPaymentPayload,
     isCartOwner,
     isCartAdmin,
     isCartApprover,
@@ -797,6 +881,7 @@ async function handleCartButton(interaction, gs, action, cartId) {
     takeDelivery,
     deliverCart,
     cancelCart,
+    iniciarPagamentoStorm,
     startCart,
     handleCartButton,
   };

@@ -1700,6 +1700,7 @@ function paymentsPanel(guild, gs) {
       'Configure, habilite e desabilite as formas de pagamento disponíveis por aqui.',
       line('Efí Bank', p.efi),
       line('Mercado Pago', p.mercadoPago),
+      line('StorM Wallet', p.storm),
       line('zenWallet', p.zenWallet),
       line('Pagamento Manual', p.manual),
       line('QR Code (PIX)', p.qr),
@@ -1718,11 +1719,12 @@ function paymentsPanel(guild, gs) {
         button(id('pay-manual'), 'Pagamento Manual', ButtonStyle.Primary, EMOJI.pix),
       ),
       new ActionRowBuilder().addComponents(
+        button(id('pay-storm'), 'StorM Wallet', ButtonStyle.Primary, EMOJI.pixZend),
         button(id('pay-qr'), 'QR Code', ButtonStyle.Primary, EMOJI.pix),
         button(id('pay-push'), 'Push-in Pay', ButtonStyle.Primary, EMOJI.pushInPay, true),
-        button(id('pay-litecoin'), 'Litecoin Wallet', ButtonStyle.Primary, EMOJI.litecoin, true),
       ),
       new ActionRowBuilder().addComponents(
+        button(id('pay-litecoin'), 'Litecoin Wallet', ButtonStyle.Primary, EMOJI.litecoin, true),
         button(id('pay-zenwallet'), 'zenWallet - Banco virtual do zenSallers', ButtonStyle.Primary, EMOJI.bank),
         button(id('settings'), 'Voltar', ButtonStyle.Secondary, EMOJI.left),
       ),
@@ -1781,6 +1783,35 @@ function gatewayPaymentPanel(guild, gs, type) {
       new ActionRowBuilder().addComponents(
         button(id('gateway-toggle', type), item.enabled ? 'Desabilitar' : 'Habilitar', item.enabled ? ButtonStyle.Danger : ButtonStyle.Success, EMOJI.refresh),
         button(id('gateway-config', type), 'Configurar credenciais', ButtonStyle.Primary, EMOJI.settings),
+      ),
+      new ActionRowBuilder().addComponents(button(id('payments'), 'Voltar', ButtonStyle.Secondary, EMOJI.left)),
+    ],
+  };
+}
+
+function stormPaymentPanel(guild, gs) {
+  const p = gs.payments.storm;
+  const e = embed(
+    `zenSallers\nConfigurar StorM Wallet - ${p.enabled ? 'Habilitado' : 'Desabilitado'}`,
+    [
+      'Configure o gateway **StorM Wallet** para aprovar pagamentos PIX automaticamente.',
+      'O bot cria a cobrança na Wallet, mostra o QR Code real e faz a entrega sozinho assim que o pagamento for confirmado.',
+      '',
+      `**Status:** \`${p.enabled ? '🟢 Habilitado' : '🔴 Desabilitado'}\``,
+      `**Credenciais:** \`${p.configured ? '🔵 Configuradas' : '🔴 Não configuradas'}\``,
+      p.configured ? '**API Key:** `••••••••••••••••`' : '',
+      '',
+      'Obtenha sua API Key em https://stormapplications.com/wallet (aba API Keys).',
+    ].filter(Boolean).join('\n'),
+    guild,
+    'Pagamentos',
+  );
+  return {
+    embeds: [e],
+    components: [
+      new ActionRowBuilder().addComponents(
+        button(id('storm-toggle'), p.enabled ? 'Desabilitar' : 'Habilitar', p.enabled ? ButtonStyle.Danger : ButtonStyle.Success, EMOJI.refresh),
+        button(id('storm-config'), 'Configurar API Key', ButtonStyle.Primary, EMOJI.settings),
       ),
       new ActionRowBuilder().addComponents(button(id('payments'), 'Voltar', ButtonStyle.Secondary, EMOJI.left)),
     ],
@@ -2819,6 +2850,7 @@ function parsePrice(value) {
     paymentsPanel,
     manualPaymentPanel,
     gatewayPaymentPanel,
+    stormPaymentPanel,
     antiFakePanel,
     cloudPanel,
     oauthPanel,

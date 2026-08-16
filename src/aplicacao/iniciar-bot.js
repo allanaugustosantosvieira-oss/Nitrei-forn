@@ -29,12 +29,12 @@ import { createCanvas } from '@napi-rs/canvas';
 import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { createServer } from 'node:http';
 import { EXTENSOES_EMOJI_ZEND, PASTA_EMOJIS_ZEND } from '../configuracoes/emojis-zend.js';
 import { TEMAS_CORES_ZEND } from '../configuracoes/temas-zend.js';
 import { CANAIS_AUTOMATICOS_ZEND } from '../configuracoes/canais-zend.js';
 import { ASSETS, localAsset } from '../configuracoes/assets-zend.js';
-import { CLIENT_ID, GUILD_ID, SYNC_EMOJIS_ONLY, SYNC_EMOJIS_ON_START, TOKEN, validarAmbiente } from '../configuracoes/ambiente.js';
+import { API_KEY, API_PORT, CLIENT_ID, GUILD_ID, SYNC_EMOJIS_ONLY, SYNC_EMOJIS_ON_START, TOKEN, validarAmbiente } from '../configuracoes/ambiente.js';
+import { iniciarServidorApi } from '../api/servidor-api.js';
 import { EMOJI, POSITION_EMOJIS, POSITION_LIMIT, applySyncedEmojiOverrides, configurarPersistenciaEmoji, emojiSyncSummary, emojiTag, renderCustomEmojis, syncLocalEmojis, syncedEmojiOptions } from '../discord/emojis.js';
 import { button, embed, id, linkButton, modal, money, nowFooter, rows, textInput } from '../discord/componentes.js';
 import { defaultGuildState, guildState, saveState, state, userDraft } from '../database/estado.js';
@@ -49,11 +49,12 @@ import { sendOrUpdate } from '../infraestrutura/envio-interacao.js';
 import { parseHex, renderFeedback, renderWelcome } from '../utilidades/formatacao.js';
 import { criarLogsDeVendas } from '../logs/vendas.js';
 import { criarSistemaCarrinho } from '../loja/carrinho.js';
+import { statusCobrancaStorm } from '../pagamentos/storm-wallet.js';
 import { criarHandlerBotoes } from '../interacoes/botoes.js';
 import { criarHandlersMenus } from '../interacoes/menus.js';
 import { criarHandlerModais } from '../interacoes/modais.js';
 import { criarPaineisZend } from '../paineis/paineis-zend.js';
-import { iniciarAgendadorAutomacoes } from '../automacoes/servico-automacoes.js';
+import { iniciarAgendadorAutomacoes, iniciarMonitorStormWallet } from '../automacoes/servico-automacoes.js';
 import { patchInteracoesDiscord } from '../infraestrutura/patch-interacoes.js';
 import { garantirCreditos } from '../infraestrutura/creditos.js';
 
@@ -279,6 +280,8 @@ const {
   syncSaleMessage,
   repostarProdutos,
   deliverCart,
+  cancelCart,
+  iniciarPagamentoStorm,
   startCart,
   handleCartButton,
 } = criarSistemaCarrinho({
@@ -316,7 +319,7 @@ const {
   textInput,
 });
 
-Object.assign(carrinhoApi, { cartAmounts, cartField, cartItemName, cartProduct, deliverCart, getCart, isCartAdmin });
+Object.assign(carrinhoApi, { cartAmounts, cartField, cartItemName, cartProduct, deliverCart, getCart, isCartAdmin, cancelCart });
 
 const handleModal = criarHandlerModais({
   ActionRowBuilder,
@@ -362,6 +365,7 @@ const handleModal = criarHandlerModais({
   modal,
   money,
   moveBalance,
+  iniciarPagamentoStorm,
   oauthConfigPanel,
   oauthPanel,
   parseDuration,
@@ -597,7 +601,11 @@ registrarEventoBotPronto(client, {
   state,
   applySyncedEmojiOverrides,
   iniciarAgendadorAutomacoes,
+  iniciarMonitorStormWallet,
   repostarProdutos,
+  deliverCart: carrinhoApi.deliverCart,
+  cancelCart: carrinhoApi.cancelCart,
+  statusCobrancaStorm,
   saveState,
   scheduleGiveaway,
   syncEmojisOnStart: SYNC_EMOJIS_ON_START,
@@ -647,21 +655,14 @@ export const paineisParaTeste = {
 
 export async function iniciarBot() {
   validarAmbiente();
-  iniciarHealthCheckServer();
+  iniciarServidorApi(client, {
+    guildState,
+    getCart: carrinhoApi.getCart,
+    deliverCart: carrinhoApi.deliverCart,
+    saveState,
+    apiKey: API_KEY,
+    port: API_PORT,
+  });
   await registerCommands({ token: TOKEN, clientId: CLIENT_ID, guildId: GUILD_ID });
   await client.login(TOKEN);
-}
-
-function iniciarHealthCheckServer() {
-  const port = Number(process.env.PORT) || 10000;
-  const server = createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('ok');
-  });
-  server.listen(port, () => {
-    console.log(`Health check server listening on port ${port}`);
-  });
-  server.on('error', (err) => {
-    console.error('Falha ao abrir porta do health check:', err.message);
-  });
 }

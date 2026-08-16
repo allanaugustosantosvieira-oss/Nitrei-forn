@@ -245,3 +245,64 @@ export function iniciarAgendadorAutomacoes(client, { state, saveState, repostarP
   void tick();
   return () => clearInterval(timer);
 }
+
+/**
+ * Monitora cobranças StorM Wallet em andamento e entrega o carrinho
+ * automaticamente quando o pagamento é confirmado (status "completed").
+ */
+export function iniciarMonitorStormWallet(
+  client,
+  { state, saveState, deliverCart, cancelCart, statusCobrancaStorm },
+) {
+  let executando = false;
+
+  const tick = async () => {
+    if (executando || !statusCobrancaStorm) return;
+    executando = true;
+    let alterado = false;
+
+    try {
+      for (const [guildId, gs] of Object.entries(state.guilds || {})) {
+        const storm = gs?.payments?.storm;
+        if (!storm?.enabled || !storm?.configured) continue;
+        const guild = await client.guilds.fetch(guildId).catch(() => null);
+        if (!guild) continue;
+
+        for (const cart of gs.carts || []) {
+          if (cart.status !== 'AWAITING_STORM_PAYMENT' || !cart.stormPaymentId) continue;
+          const data = await statusCobrancaStorm({ gs, paymentId: cart.stormPaymentId }).catch(() => null);
+          if (!data) continue;
+
+          if (data.status === 'completed') {
+            cart.paymentMethod ||= 'StorM Wallet';
+            const fakeInteraction = { guild };
+            const result = await deliverCart(fakeInteraction, gs, cart, guild.ownerId, true).catch((err) => ({
+              ok: false,
+              message: err.message,
+            }));
+            if (result.ok) {
+              console.log(`   storm ${cart.publicId}: pago e entregue automaticamente`);
+              alterado = true;
+            } else {
+              console.warn(`   storm ${cart.publicId}: ${result.message}`);
+            }
+          } else if (data.status === 'expired' || data.status === 'cancelled') {
+            const changed = await cancelCart(guild, gs, cart, data.status === 'expired' ? 'EXPIRED' : 'CANCELLED', `Cobrança StorM ${data.status}.`).catch(() => false);
+            if (changed) {
+              console.log(`   storm ${cart.publicId}: cobrança ${data.status}`);
+              alterado = true;
+            }
+          }
+        }
+      }
+      if (alterado) await saveState();
+    } finally {
+      executando = false;
+    }
+  };
+
+  const timer = setInterval(tick, 12_000);
+  timer.unref?.();
+  void tick();
+  return () => clearInterval(timer);
+}

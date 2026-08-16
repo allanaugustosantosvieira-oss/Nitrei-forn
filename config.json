@@ -1,8 +1,9 @@
 {
-  "token": "MTUzODAzNjI1MDczMTIyMTA3Mg.GN7auf.NmeDTWZXn273lIiUaawqoGIoz-Jvt_4Q1wem98",
+  "token": "",
   "clientId": "1538036250731221072",
   "guildId": "1531822967028187156",
   "emojiFolder": "discord-emojis/upload",
   "syncEmojisOnStart": true,
-  "approvalRoleId": "1531823589526081678"
+  "approvalRoleId": "1531823589526081678",
+  "apiKey": "NITREI_FORN_API_KEY_TROQUE_AQUI_123456"
 }

@@ -107,6 +107,7 @@ export function criarHandlerBotoes(ctx) {
     stockCount,
     stockPanel,
     stockRemovePanel,
+    stormPaymentPanel,
     storeOauthPanel,
     storePanel,
     syncLocalEmojis,
@@ -1057,6 +1058,14 @@ export function criarHandlerBotoes(ctx) {
       return sendOrUpdate(interaction, simplePanel(guild, 'Configurar Cargos', 'Configure cargo de cliente, staff, gerência e permissões usadas pelo bot.', 'settings'));
     case 'payments': return sendOrUpdate(interaction, paymentsPanel(guild, gs));
     case 'pay-manual': return sendOrUpdate(interaction, manualPaymentPanel(guild, gs));
+    case 'pay-storm': return sendOrUpdate(interaction, stormPaymentPanel(guild, gs));
+    case 'storm-toggle':
+      gs.payments.storm.enabled = !gs.payments.storm.enabled;
+      return sendOrUpdate(interaction, stormPaymentPanel(guild, gs));
+    case 'storm-config':
+      return interaction.showModal(modal(id('modal-storm'), 'Configurar StorM Wallet', [
+        textInput('apiKey', 'API KEY*', 'Cole sua API Key da StorM Wallet', TextInputStyle.Short, true, gs.payments.storm.apiKey),
+      ]));
     case 'pay-manual-toggle':
       gs.payments.manual.enabled = !gs.payments.manual.enabled;
       return sendOrUpdate(interaction, manualPaymentPanel(guild, gs));

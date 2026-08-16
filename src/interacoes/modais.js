@@ -40,6 +40,7 @@ export function criarHandlerModais(ctx) {
     giveawayManagePanel,
     giveawayMessagePayload,
     id,
+    iniciarPagamentoStorm,
     isCartAdmin,
     isCartOwner,
     linkButton,
@@ -134,6 +135,14 @@ export function criarHandlerModais(ctx) {
       });
       await sendApprovalLog(guild, gs, cart);
       return interaction.reply({ content: `${EMOJI.yesgenesis} | Comprovante enviado. Aguarde a aprovação da equipe.`, ephemeral: true });
+    }
+    case 'modal-cart-storm-cpf': {
+      const cart = getCart(gs, a);
+      if (!cart) return interaction.reply({ content: 'Carrinho não encontrado.', ephemeral: true });
+      if (!isCartOwner(interaction, cart) && !isCartAdmin(interaction, gs)) return interaction.reply({ content: 'Este carrinho não pertence a você.', ephemeral: true });
+      const result = await iniciarPagamentoStorm(interaction, gs, cart, get('cpf'), get('name'));
+      if (!result.ok) return interaction.reply({ content: result.message, ephemeral: true });
+      return interaction.reply({ content: result.message, ephemeral: true });
     }
     case 'modal-product-name': {
       const draft = { name: get('name'), description: '', autoDelivery: true, icon: '', banner: '' };

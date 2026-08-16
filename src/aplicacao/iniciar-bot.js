@@ -29,6 +29,7 @@ import { createCanvas } from '@napi-rs/canvas';
 import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { createServer } from 'node:http';
 import { EXTENSOES_EMOJI_ZEND, PASTA_EMOJIS_ZEND } from '../configuracoes/emojis-zend.js';
 import { TEMAS_CORES_ZEND } from '../configuracoes/temas-zend.js';
 import { CANAIS_AUTOMATICOS_ZEND } from '../configuracoes/canais-zend.js';
@@ -646,6 +647,21 @@ export const paineisParaTeste = {
 
 export async function iniciarBot() {
   validarAmbiente();
+  iniciarHealthCheckServer();
   await registerCommands({ token: TOKEN, clientId: CLIENT_ID, guildId: GUILD_ID });
   await client.login(TOKEN);
+}
+
+function iniciarHealthCheckServer() {
+  const port = Number(process.env.PORT) || 10000;
+  const server = createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('ok');
+  });
+  server.listen(port, () => {
+    console.log(`Health check server listening on port ${port}`);
+  });
+  server.on('error', (err) => {
+    console.error('Falha ao abrir porta do health check:', err.message);
+  });
 }

@@ -1,16 +1,26 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { POSITION_LIMIT, applySyncedEmojiOverrides } from '../discord/emojis.js';
 import { criarEstadoPadraoAutomacoes, normalizarEstadoAutomacoes } from '../automacoes/estado-automacoes.js';
 
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** Pasta de dados: prioriza a env DATA_DIR (disco persistente no Render), senão fica junto ao código. */
+export const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../data');
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
 
 export async function loadState() {
   await fs.mkdir(DATA_DIR, { recursive: true });
   try {
-    return JSON.parse(await fs.readFile(STATE_FILE, 'utf8'));
-  } catch {
+    const parsed = JSON.parse(await fs.readFile(STATE_FILE, 'utf8'));
+    console.log(`[estado] Configurações carregadas de ${STATE_FILE}`);
+    return parsed;
+  } catch (err) {
+    console.warn(
+      `[estado] Nenhum estado válido em ${STATE_FILE} (${err.code || err.message}). ` +
+        'Iniciando do zero. Se estiver no Render, monte o disco persistente e defina DATA_DIR.',
+    );
     return { guilds: {}, drafts: {} };
   }
 }

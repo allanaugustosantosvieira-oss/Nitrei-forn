@@ -700,8 +700,8 @@ async function startCart(interaction, gs, product) {
   const { prepararMensagem } = await import('../infraestrutura/resposta-painel.js');
   if (channel) {
     cart.channelId = channel.id;
-    const sent = await channel.send(prepararMensagem(cartPayload(interaction.guild, gs, cart)));
-    cart.messageId = sent.id;
+    const sent = await channel.send(prepararMensagem(cartPayload(interaction.guild, gs, cart))).catch(() => null);
+    if (sent) cart.messageId = sent.id;
     const link = `https://discord.com/channels/${interaction.guild.id}/${channel.id}`;
     return interaction.reply({
       content: `${EMOJI.yesgenesis} Seu carrinho \`${cart.publicId}\` foi criado!`,

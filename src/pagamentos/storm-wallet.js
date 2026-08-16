@@ -48,9 +48,12 @@ export async function statusCobrancaStorm({ gs, paymentId }) {
   });
 }
 
-/** Converte o data URL do QR (data:image/png;base64,...) em Buffer. */
+/** Converte o data URL do QR (data:image/png;base64,...) em Buffer. Retorna null se não for um PNG válido. */
 export function stormQrBuffer(qrCode) {
   if (!qrCode) return null;
   const base64 = String(qrCode).split(',')[1] || String(qrCode);
-  return Buffer.from(base64, 'base64');
+  const buf = Buffer.from(base64, 'base64');
+  if (buf.length < 8) return null;
+  if (buf.readUInt32BE(0) !== 0x89504e47) return null;
+  return buf;
 }

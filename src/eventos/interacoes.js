@@ -23,6 +23,11 @@ function efemero(payload = {}) {
 async function responderErro(interaction, error) {
   if (!interaction?.isRepliable?.()) return;
   if (IGNORAR.has(error?.code)) return;
+  console.error('[Interação] Erro ao processar:', error?.message || error, {
+    code: error?.code,
+    errors: error?.errors || error?.rawError?.errors || null,
+    stack: error?.stack,
+  });
 
   const payload = efemero({
     content: `Erro ao processar: ${error?.message || 'falha desconhecida'}`,

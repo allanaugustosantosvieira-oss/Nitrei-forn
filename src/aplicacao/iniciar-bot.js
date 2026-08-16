@@ -662,10 +662,12 @@ export async function iniciarBot() {
     guildState,
     getCart: carrinhoApi.getCart,
     deliverCart: carrinhoApi.deliverCart,
+    cancelCart: carrinhoApi.cancelCart,
     saveState,
     apiKey: API_KEY,
     port: API_PORT,
     state,
+    statusCobrancaStorm,
   });
   await registerCommands({ token: TOKEN, clientId: CLIENT_ID, guildId: GUILD_ID });
   await client.login(TOKEN);

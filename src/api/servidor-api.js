@@ -34,10 +34,12 @@ export function iniciarServidorApi(client, opts) {
     guildState,
     getCart,
     deliverCart,
+    cancelCart,
     saveState,
     apiKey,
     port,
     state,
+    statusCobrancaStorm,
   } = opts;
 
   if (!apiKey) {
@@ -71,6 +73,68 @@ export function iniciarServidorApi(client, opts) {
 
     if (route === '/health' || route === '/') {
       return send(200, { ok: true, bot: client.user?.username || 'discord-bot' });
+    }
+
+    if (route === '/weebhook/storm-wallet' || route === '/webhook/storm-wallet') {
+      if (req.method !== 'POST') return send(405, { ok: false, error: 'Use POST.' });
+      try {
+        const body = await lerCorpo(req);
+        const paymentId =
+          body?.id || body?.paymentId || body?.payment_id ||
+          body?.data?.id || body?.data?.paymentId || body?.data?.payment_id || null;
+        const externalId =
+          body?.externalId || body?.external_id ||
+          body?.data?.externalId || body?.data?.external_id || null;
+
+        if (!paymentId && !externalId) {
+          return send(200, { ok: true, message: 'Sem identificador no payload.' });
+        }
+
+        let alterado = false;
+        for (const [guildId, gs] of Object.entries(state.guilds || {})) {
+          if (!gs?.payments?.storm?.enabled || !gs?.payments?.storm?.configured) continue;
+          const cart = (gs.carts || []).find(
+            (c) =>
+              c.status === 'AWAITING_STORM_PAYMENT' &&
+              ((paymentId && c.stormPaymentId === paymentId) || (externalId && c.publicId === externalId)),
+          );
+          if (!cart) continue;
+          const guild = await client.guilds.fetch(guildId).catch(() => null);
+          if (!guild) continue;
+
+          const data = await statusCobrancaStorm({ gs, paymentId: cart.stormPaymentId }).catch(() => null);
+          if (!data) break;
+          if (data.status === 'completed') {
+            cart.paymentMethod ||= 'StorM Wallet';
+            const fakeInteraction = { guild };
+            const result = await deliverCart(fakeInteraction, gs, cart, guild.ownerId, true).catch((err) => ({
+              ok: false,
+              message: err.message,
+            }));
+            if (result.ok) {
+              console.log(`   webhook storm ${cart.publicId}: pago e entregue`);
+              alterado = true;
+            } else {
+              console.warn(`   webhook storm ${cart.publicId}: ${result.message}`);
+            }
+          } else if (data.status === 'expired' || data.status === 'cancelled') {
+            const changed = await cancelCart(
+              guild,
+              gs,
+              cart,
+              data.status === 'expired' ? 'EXPIRED' : 'CANCELLED',
+              `Cobrança StorM ${data.status}.`,
+            ).catch(() => false);
+            if (changed) alterado = true;
+          }
+          break;
+        }
+        if (alterado) await saveState();
+        return send(200, { ok: true });
+      } catch (err) {
+        console.error('[Webhook Storm] Erro:', err.message);
+        return send(200, { ok: true, note: 'ack' });
+      }
     }
 
     if (!route.startsWith('/api/')) {
